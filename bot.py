@@ -139,20 +139,37 @@ async def list_expenses(update, context):
 async def unknown(update, context):
     await update.message.reply_text("I didn't understand that. Try /help")
 
-def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_cmd))
-    app.add_handler(CommandHandler("faq", faq))
-    app.add_handler(CommandHandler("remind", remind))
-    app.add_handler(CommandHandler("reminders", list_reminders))
-    app.add_handler(CommandHandler("expense", expense))
-    app.add_handler(CommandHandler("expenses", list_expenses))
-    app.add_handler(CommandHandler("mylocation", mylocation))
-    app.add_handler(MessageHandler(filters.LOCATION, handle_location))
-    app.add_handler(MessageHandler(filters.COMMAND, unknown))
-    print("Bot is running... Press Ctrl+C to stop.")
-    app.run_polling()
+from flask import Flask, request
+import asyncio
+
+flask_app = Flask(__name__)
+telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+telegram_app.add_handler(CommandHandler("start", start))
+telegram_app.add_handler(CommandHandler("help", help_cmd))
+telegram_app.add_handler(CommandHandler("faq", faq))
+telegram_app.add_handler(CommandHandler("remind", remind))
+telegram_app.add_handler(CommandHandler("reminders", list_reminders))
+telegram_app.add_handler(CommandHandler("expense", expense))
+telegram_app.add_handler(CommandHandler("expenses", list_expenses))
+telegram_app.add_handler(CommandHandler("mylocation", mylocation))
+telegram_app.add_handler(MessageHandler(filters.LOCATION, handle_location))
+telegram_app.add_handler(MessageHandler(filters.COMMAND, unknown))
+
+@flask_app.route("/", methods=["GET"])
+def home():
+    return "Bot is alive!"
+
+@flask_app.route("/webhook", methods=["POST"])
+def webhook():
+    async def process():
+        async with telegram_app:
+            update = Update.de_json(request.get_json(force=True), telegram_app.bot)
+            await telegram_app.process_update(update)
+    asyncio.run(process())
+    return "ok"
 
 if __name__ == "__main__":
-    main()
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    flask_app.run(host="0.0.0.0", port=port)
