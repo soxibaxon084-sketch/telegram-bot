@@ -11,6 +11,7 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
+import yt_dlp
 
 BOT_TOKEN = "8981578001:AAFRQHImB6Ry5bl6Q2OvcSTTlfytu7vUhKs"
 DATA_FILE = "data.json"
@@ -65,6 +66,23 @@ async def handle_location(update, context):
             params={"lat": lat, "lon": lon, "format": "json"},
             headers={"User-Agent": "DailyS-Assistant-Bot"}
         )
+        async def download(update, context):
+    if not context.args:
+        await update.message.reply_text("Usage: /download <instagram or tiktok link>")
+        return
+    url = context.args[0]
+    await update.message.reply_text("Downloading... this may take a moment.")
+    ydl_opts = {
+        "outtmpl": "downloaded_video.%(ext)s",
+        "format": "mp4/best",
+    }
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        with open("downloaded_video.mp4", "rb") as video_file:
+            await update.message.reply_video(video=video_file)
+    except Exception as e:
+        await update.message.reply_text(f"Couldn't download that. Error: {e}")
         data = response.json()
         address = data.get("display_name", "Couldn't determine address.")
     except Exception:
@@ -153,8 +171,10 @@ telegram_app.add_handler(CommandHandler("reminders", list_reminders))
 telegram_app.add_handler(CommandHandler("expense", expense))
 telegram_app.add_handler(CommandHandler("expenses", list_expenses))
 telegram_app.add_handler(CommandHandler("mylocation", mylocation))
+telegram_app.add_handler(CommandHandler("download", download))
 telegram_app.add_handler(MessageHandler(filters.LOCATION, handle_location))
-telegram_app.add_handler(MessageHandler(filters.COMMAND, unknown))
+telegram_app.add_handler(MessageHandler(filters.COMMAND, unknown)
+                         )
 
 @flask_app.route("/", methods=["GET"])
 def home():
