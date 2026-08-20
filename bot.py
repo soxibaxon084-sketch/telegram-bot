@@ -113,8 +113,8 @@ async def list_expenses(update, context):
         return
     total = sum(e["amount"] for e in user["expenses"])
     lines = [f"{e['date']}: {e['amount']} - {e['note']}" for e in user["expenses"]]
-    lines.
-    append(f"\nTotal: {total:.2f}")
+    lines.append(f"\nTotal: {total:.2f}")
+    
     await update.message.reply_text("\n".join(lines))
 
 async def mylocation(update, context):
