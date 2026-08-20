@@ -47,47 +47,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/reminders - list your reminders\n"
         "/expense <amount> <note> - log an expense\n"
         "/expenses - see your expense total\n"
+        "/mylocation - share your live location\n"
+        "/download <link> - download instagram/tiktok video\n"
         "/help - show this message"
     )
-async def mylocation(update, context):
-    button = KeyboardButton(text="Share my location", request_location=True)
-    markup = ReplyKeyboardMarkup([[button]], one_time_keyboard=True, resize_keyboard=True)
-    await update.message.reply_text(
-        "Tap the button below to share your location:",
-        reply_markup=markup
-    )
 
-async def handle_location(update, context):
-    lat = update.message.location.latitude
-    lon = update.message.location.longitude
-    try:
-        response = requests.get(
-            "https://nominatim.openstreetmap.org/reverse",
-            params={"lat": lat, "lon": lon, "format": "json"},
-            headers={"User-Agent": "DailyS-Assistant-Bot"}
-        )
-        async def download(update, context):
-    if not context.args:
-        await update.message.reply_text("Usage: /download <instagram or tiktok link>")
-        return
-    url = context.args[0]
-    await update.message.reply_text("Downloading... this may take a moment.")
-    ydl_opts = {
-        "outtmpl": "downloaded_video.%(ext)s",
-        "format": "mp4/best",
-    }
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-        with open("downloaded_video.mp4", "rb") as video_file:
-            await update.message.reply_video(video=video_file)
-    except Exception as e:
-        await update.message.reply_text(f"Couldn't download that. Error: {e}")
-        data = response.json()
-        address = data.get("display_name", "Couldn't determine address.")
-    except Exception:
-        address = "Sorry, couldn't look up your location right now."
-    await update.message.reply_text(f"You're at:\n{address}")
 async def help_cmd(update, context):
     await start(update, context)
 
@@ -96,7 +60,6 @@ async def faq(update, context):
         await update.message.reply_text("Ask about: hours, location, price\nUsage: /faq hours")
         return
     topic = context.args[0].lower()
-
     if topic == "hours":
         now_utc = datetime.now(timezone.utc).strftime("%H:%M UTC on %B %d, %Y")
         answer = f"The current time is {now_utc}."
@@ -104,7 +67,6 @@ async def faq(update, context):
         answer = "Use /mylocation to share your live location and get your address!"
     else:
         answer = FAQ.get(topic, "Sorry, I don't have an answer for that yet.")
-
     await update.message.reply_text(answer)
 
 async def remind(update, context):
@@ -151,8 +113,50 @@ async def list_expenses(update, context):
         return
     total = sum(e["amount"] for e in user["expenses"])
     lines = [f"{e['date']}: {e['amount']} - {e['note']}" for e in user["expenses"]]
-    lines.append(f"\nTotal: {total:.2f}")
+    lines.
+    append(f"\nTotal: {total:.2f}")
     await update.message.reply_text("\n".join(lines))
+
+async def mylocation(update, context):
+    button = KeyboardButton(text="Share my location", request_location=True)
+    markup = ReplyKeyboardMarkup([[button]], one_time_keyboard=True, resize_keyboard=True)
+    await update.message.reply_text(
+        "Tap the button below to share your location:",
+        reply_markup=markup
+    )
+
+async def handle_location(update, context):
+    lat = update.message.location.latitude
+    lon = update.message.location.longitude
+    try:
+        response = requests.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={"lat": lat, "lon": lon, "format": "json"},
+            headers={"User-Agent": "DailyS-Assistant-Bot"}
+        )
+        data = response.json()
+        address = data.get("display_name", "Couldn't determine address.")
+    except Exception:
+        address = "Sorry, couldn't look up your location right now."
+    await update.message.reply_text(f"You're at:\n{address}")
+
+async def download(update, context):
+    if not context.args:
+        await update.message.reply_text("Usage: /download <instagram or tiktok link>")
+        return
+    url = context.args[0]
+    await update.message.reply_text("Downloading... this may take a moment.")
+    ydl_opts = {
+        "outtmpl": "downloaded_video.%(ext)s",
+        "format": "mp4/best",
+    }
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        with open("downloaded_video.mp4", "rb") as video_file:
+            await update.message.reply_video(video=video_file)
+    except Exception as e:
+        await update.message.reply_text(f"Couldn't download that. Error: {e}")
 
 async def unknown(update, context):
     await update.message.reply_text("I didn't understand that. Try /help")
@@ -173,8 +177,7 @@ telegram_app.add_handler(CommandHandler("expenses", list_expenses))
 telegram_app.add_handler(CommandHandler("mylocation", mylocation))
 telegram_app.add_handler(CommandHandler("download", download))
 telegram_app.add_handler(MessageHandler(filters.LOCATION, handle_location))
-telegram_app.add_handler(MessageHandler(filters.COMMAND, unknown)
-                         )
+telegram_app.add_handler(MessageHandler(filters.COMMAND, unknown))
 
 @flask_app.route("/", methods=["GET"])
 def home():
@@ -189,7 +192,6 @@ def webhook():
     asyncio.run(process())
     return "ok"
 
-if __name__ == "__main__":
-    import os
+if name == "__main__":
     port = int(os.environ.get("PORT", 5000))
     flask_app.run(host="0.0.0.0", port=port)
