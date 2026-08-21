@@ -139,24 +139,31 @@ async def handle_location(update, context):
     except Exception:
         address = "Sorry, couldn't look up your location right now."
     await update.message.reply_text(f"You're at:\n{address}")
-
 async def download(update, context):
     if not context.args:
         await update.message.reply_text("Usage: /download <instagram or tiktok link>")
         return
-    url = context.args[0]
-    await update.message.reply_text("Downloading... this may take a moment.")
+    url = context.args[0].strip("<>")
+    await update.message.reply_text("Downloading audio... this may take a moment.")
     ydl_opts = {
-        "outtmpl": "downloaded_video.%(ext)s",
-        "format": "mp4/best",
+        "outtmpl": "downloaded_audio.%(ext)s",
+        "format": "bestaudio/best",
+        "postprocessors": [{
+            "key": "FFmpegExtractAudio",
+            "preferredcodec": "mp3",
+        }],
     }
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
-        with open("downloaded_video.mp4", "rb") as video_file:
-            await update.message.reply_video(video=video_file)
+        with open("downloaded_audio.mp3", "rb") as audio_file:
+            await update.message.reply_audio(audio=audio_file)
     except Exception as e:
-        await update.message.reply_text(f"Couldn't download that. Error: {e}")
+        if "429" in str(e) or "login" in str(e).lower():
+            await update.message.reply_text("Instagram is blocking this download. Try a TikTok link instead.")
+        else:
+            await update.message.reply_text("Couldn't download that. Make sure the link is correct and public.")
+
 
 async def unknown(update, context):
     await update.message.reply_text("I didn't understand that. Try /help")
